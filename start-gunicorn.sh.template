@@ -1,0 +1,18 @@
+#!/bin/bash
+# This allows to mix the Linux distribution maintained Gunicorn alongside the URLChecker rest of installation in a venv
+set -euo pipefail
+
+# Dynamically get site-packages path
+VENV_PATH="/usr/share/url-checker/.venv"
+SITE_PACKAGES=$("${VENV_PATH}/bin/python" -c "import site; print(site.getsitepackages()[0])")
+
+export PYTHONPATH="${SITE_PACKAGES}"
+export VIRTUAL_ENV="${VENV_PATH}"
+
+exec /usr/bin/gunicorn \
+    --workers 4 \
+    --bind [::1]:5001 \
+    --access-logfile /var/log/url-checker/access.log \
+    --error-logfile /var/log/url-checker/error.log \
+    --log-level info \
+    url_checker.app:app

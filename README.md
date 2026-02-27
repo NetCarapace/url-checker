@@ -43,7 +43,7 @@ DevOps and CI/CD principles (https://about.gitlab.com/topics/version-control/wha
   - A new commit related to the version bump, in ```main``` branch, also triggers these stages of CI/CD.
 
 - In an effort of transparency and collaboration promotion, we maintain the file ```CONTRIBUTORS.md``` to leverage the
-full Restena Team accountability accross teams while:
+full Team accountability accross teams while:
   - keeping in the light people who actively contributed to the repository,
   - avoiding to maintain dupplicate headers in each file with redundant things like ```version```, ```ownership```, etc.
 

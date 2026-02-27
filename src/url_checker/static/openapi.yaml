@@ -1,0 +1,909 @@
+openapi: 3.0.3
+info:
+  title: URL Checker API
+  description: |
+    API for analyzing URLs through validation, reachability checks, and security assessments.
+
+    ## Workflow
+    1. Submit a URL via POST `/main/urls`
+    2. Job1 (Validation) runs synchronously
+    3. If valid HTTP/HTTPS, Job2 (Reachability) and Job3 (Security) run asynchronously
+    4. Query results via GET endpoints
+
+    ## Authentication
+    All endpoints (except root `/main`) require Bearer token authentication via `Authorization` header.
+  version: 0.2.0
+  contact:
+    name: RESTENA
+    url: https://www.restena.lu
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://127.0.0.1:5000/
+    description: Local development server
+  - url: https://urlchecker-test.restena.lu/
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: URLs
+    description: URL management and status
+  - name: Analyses
+    description: Analysis workflows containing multiple jobs
+  - name: Jobs
+    description: Individual job execution details
+  - name: Results
+    description: Job execution results and outputs
+
+paths:
+  /main:
+    get:
+      summary: Health check
+      description: Simple endpoint to verify API is running
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: API is operational
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Hello, Restena!"
+
+  /main/urls:
+    post:
+      summary: Submit URL for analysis
+      description: |
+        Creates a new URL entry and initiates analysis workflow:
+        - Job1 (Validation) runs synchronously
+        - Job2 (Reachability) and Job3 (Security) run asynchronously if URL is valid HTTP/HTTPS
+      tags:
+        - URLs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL to analyze
+                  maxLength: 2048
+                  example: "https://www.google.fr"
+      responses:
+        '201':
+          description: URL analysis created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/URLSubmissionResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_field:
+                  value:
+                    error: "Data payload empty or missing required field: url"
+                invalid_type:
+                  value:
+                    error: "url must be a string"
+                too_long:
+                  value:
+                    error: "url string length must be less or equal than 2048"
+                invalid_url:
+                  value:
+                    error: "Invalid URL"
+                    details:
+                      url: ["Not a valid URL"]
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Internal server error. Analysis aborted."
+                message: "Database connection failed"
+
+  /main/urls/all:
+    get:
+      summary: List all URLs
+      description: Retrieve all URLs with their latest analysis status
+      tags:
+        - URLs
+      responses:
+        '200':
+          description: List of all URLs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  urls:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/URLDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Delete all URLs
+      description: Removes all URLs and associated data from the database
+      tags:
+        - URLs
+      responses:
+        '200':
+          description: All URLs deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "42 urls deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /main/urls/{uuid}:
+    get:
+      summary: Get URL by UUID
+      description: Retrieve details for a specific URL
+      tags:
+        - URLs
+      parameters:
+        - $ref: '#/components/parameters/UUIDParam'
+      responses:
+        '200':
+          description: URL details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/URLDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: URL not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "URL not known"
+
+    delete:
+      summary: Delete URL by UUID
+      description: Remove a specific URL and all associated analyses
+      tags:
+        - URLs
+      parameters:
+        - $ref: '#/components/parameters/UUIDParam'
+      responses:
+        '200':
+          description: URL deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "URL deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: URL not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /main/analyses/all:
+    get:
+      summary: List all analyses
+      description: Retrieve all analysis workflows with their jobs
+      tags:
+        - Analyses
+      responses:
+        '200':
+          description: List of all analyses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnalysisSummary'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Delete all analyses
+      description: Remove all analyses from the database
+      tags:
+        - Analyses
+      responses:
+        '200':
+          description: All analyses deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "15 analyses deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /main/analyses/{analysis_id}:
+    get:
+      summary: Get analysis by ID
+      description: Retrieve detailed information about a specific analysis
+      tags:
+        - Analyses
+      parameters:
+        - $ref: '#/components/parameters/AnalysisIDParam'
+      responses:
+        '200':
+          description: Analysis details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Analysis not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Analysis not found"
+
+    delete:
+      summary: Delete analysis by ID
+      description: Remove a specific analysis
+      tags:
+        - Analyses
+      parameters:
+        - $ref: '#/components/parameters/AnalysisIDParam'
+      responses:
+        '200':
+          description: Analysis deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Analysis deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Analysis not found
+
+  /main/jobs/all:
+    get:
+      summary: List all jobs
+      description: Retrieve all jobs with their configurations
+      tags:
+        - Jobs
+      responses:
+        '200':
+          description: List of all jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobSummary'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Delete all jobs
+      description: Remove all jobs from the database
+      tags:
+        - Jobs
+      responses:
+        '200':
+          description: All jobs deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "45 jobs deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /main/jobs/{job_id}:
+    get:
+      summary: Get job by ID
+      description: Retrieve details for a specific job
+      tags:
+        - Jobs
+      parameters:
+        - $ref: '#/components/parameters/JobIDParam'
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Job not found"
+
+    delete:
+      summary: Delete job by ID
+      description: Remove a specific job
+      tags:
+        - Jobs
+      parameters:
+        - $ref: '#/components/parameters/JobIDParam'
+      responses:
+        '200':
+          description: Job deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Job deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Job not found
+
+  /main/results/all:
+    get:
+      summary: List all results
+      description: Retrieve all job execution results
+      tags:
+        - Results
+      responses:
+        '200':
+          description: List of all results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Result'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      summary: Delete all results
+      description: Remove all results from the database
+      tags:
+        - Results
+      responses:
+        '200':
+          description: All results deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "30 results deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /main/results/{result_id}:
+    get:
+      summary: Get result by ID
+      description: Retrieve a specific job execution result
+      tags:
+        - Results
+      parameters:
+        - $ref: '#/components/parameters/ResultIDParam'
+      responses:
+        '200':
+          description: Result details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Result not found"
+
+    delete:
+      summary: Delete result by ID
+      description: Remove a specific result
+      tags:
+        - Results
+      parameters:
+        - $ref: '#/components/parameters/ResultIDParam'
+      responses:
+        '200':
+          description: Result deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Job deleted"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          description: Result not found
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+      description: API token for authentication
+
+  parameters:
+    UUIDParam:
+      name: uuid
+      in: path
+      required: true
+      description: URL UUID identifier
+      schema:
+        type: string
+        format: uuid
+        example: "4334aecf-ddbf-4263-bba1-5dbe6e1251d1"
+
+    AnalysisIDParam:
+      name: analysis_id
+      in: path
+      required: true
+      description: Analysis ID
+      schema:
+        type: integer
+        example: 6
+
+    JobIDParam:
+      name: job_id
+      in: path
+      required: true
+      description: Job ID
+      schema:
+        type: integer
+        example: 16
+
+    ResultIDParam:
+      name: result_id
+      in: path
+      required: true
+      description: Result ID
+      schema:
+        type: integer
+        example: 6
+
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Unauthorized"
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties: true
+        message:
+          type: string
+          description: Detailed error message
+
+    StatusInfo:
+      type: object
+      properties:
+        code:
+          type: string
+          nullable: true
+          description: Status code
+        label:
+          type: string
+          description: Human-readable label
+        description:
+          type: string
+          nullable: true
+          description: Status description
+
+    URLDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Internal database ID
+          example: 2
+        name:
+          type: string
+          format: uri
+          description: Original URL submitted
+          example: "https://www.google.fr"
+        uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for this URL
+          example: "4334aecf-ddbf-4263-bba1-5dbe6e1251d1"
+        last_status:
+          type: object
+          description: Latest analysis status results
+          properties:
+            overall:
+              type: string
+              nullable: true
+              description: Overall status summary
+              example: "Unknown"
+            validity:
+              $ref: '#/components/schemas/StatusInfo'
+            reachability:
+              $ref: '#/components/schemas/StatusInfo'
+            security:
+              $ref: '#/components/schemas/StatusInfo'
+        last_completed_analysis:
+          type: object
+          properties:
+            id:
+              type: integer
+              nullable: true
+              description: ID of last completed analysis
+              example: 6
+            utc:
+              type: string
+              format: date-time
+              nullable: true
+              description: Timestamp of completion
+              example: "2026-02-04T16:51:35+00:00"
+        analysis_in_progress:
+          type: boolean
+          description: Whether an analysis is currently running
+          example: false
+        analyses_ids:
+          type: array
+          items:
+            type: integer
+          description: List of all analysis IDs for this URL
+          example: [6]
+
+    URLSubmissionResponse:
+      type: object
+      properties:
+        url_name:
+          type: string
+          format: uri
+          example: "https://www.google.fr"
+        url_uuid:
+          type: string
+          format: uuid
+          example: "4334aecf-ddbf-4263-bba1-5dbe6e1251d1"
+        analysis:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 6
+            created_at_utc:
+              type: string
+              format: date-time
+              example: "2026-02-04T16:51:02+00:00"
+        jobs:
+          type: object
+          properties:
+            job1_validation:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  example: 16
+                type_code:
+                  type: string
+                  example: "VALIDATION_CHECK"
+                status:
+                  type: string
+                  example: "SUCCESS"
+                validity_status:
+                  type: string
+                  example: "VALID_HTTP"
+                is_valid:
+                  type: boolean
+                  example: true
+            job2_reachability:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  nullable: true
+                  example: 17
+                type_code:
+                  type: string
+                  example: "REACHABILITY_CHECK"
+                status:
+                  type: string
+                  example: "PENDING"
+            job3_security:
+              type: object
+              properties:
+                id:
+                  type: integer
+                  nullable: true
+                  example: 18
+                type_code:
+                  type: string
+                  example: "SECURITY_CHECK"
+                status:
+                  type: string
+                  example: "PENDING"
+        message:
+          type: string
+          example: "Analysis created"
+
+    JobTypeInfo:
+      type: object
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_CHECK
+            - REACHABILITY_CHECK
+            - SECURITY_CHECK
+          example: "VALIDATION_CHECK"
+        label:
+          type: string
+          example: "URL Validation Check"
+
+    JobData:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 16
+        job_type:
+          $ref: '#/components/schemas/JobTypeInfo'
+        status:
+          type: string
+          enum:
+            - PENDING
+            - STARTED
+            - SUCCESS
+            - FAILED
+            - FAILURE
+            - RETRY
+            - SKIPPED
+          example: "SUCCESS"
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-02-04T16:51:02+00:00"
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2026-02-04T16:51:02+00:00"
+
+    AnalysisSummary:
+      type: object
+      properties:
+        analysis_id:
+          type: integer
+          example: 6
+        url_id:
+          type: integer
+          example: 2
+        url:
+          type: string
+          format: uri
+          example: "https://www.google.fr"
+        uuid:
+          type: string
+          format: uuid
+          example: "4334aecf-ddbf-4263-bba1-5dbe6e1251d1"
+        datetime_utc:
+          type: array
+          items:
+            type: string
+            format: date-time
+          example: ["2026-02-04T16:51:02+00:00"]
+        jobs_id:
+          type: array
+          items:
+            type: integer
+          example: [16, 17, 18]
+        jobs_data:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobData'
+
+    AnalysisDetail:
+      type: object
+      properties:
+        validity_status:
+          type: string
+          example: "VALID_HTTP"
+        reachability_status:
+          type: string
+          example: "REACHABLE"
+        security_status:
+          type: string
+          example: "UNKNOWN"
+        overall_status:
+          type: string
+          example: "Unknown"
+        data:
+          $ref: '#/components/schemas/AnalysisSummary'
+
+    JobTypeConfig:
+      type: object
+      properties:
+        tools_command:
+          type: string
+          description: Command to execute
+          example: "ping -c 3 -W 5"
+        tools_path:
+          type: string
+          description: Path to tools directory
+          example: "/usr/bin"
+        timeout_seconds:
+          type: integer
+          description: Execution timeout in seconds
+          example: 15
+        max_retries:
+          type: integer
+          description: Maximum retry attempts
+          example: 3
+        retry_delay_seconds:
+          type: integer
+          description: Delay between retries in seconds
+          example: 5
+
+    JobSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 16
+        url_id:
+          type: integer
+          example: 2
+        analysis_id:
+          type: integer
+          example: 6
+        job_type_config:
+          $ref: '#/components/schemas/JobTypeConfig'
+        is_completed:
+          type: boolean
+          example: true
+        is_active:
+          type: boolean
+          example: false
+
+    JobDetail:
+      type: object
+      properties:
+        job_id:
+          type: integer
+          example: 16
+        url_id:
+          type: integer
+          nullable: true
+          example: 2
+        status:
+          type: string
+          example: "SUCCESS"
+        result:
+          type: string
+          nullable: true
+          description: Stringified result output
+          example: "{'scheme': 'https', 'domain': 'www.google.fr', 'path': '', 'is_http': True, 'is_ip_address': False, 'has_port': False, 'port': None, 'security_flags': []}"
+        error:
+          type: string
+          description: Error logs if job failed
+          example: ""
+        start_utc:
+          type: array
+          items:
+            type: string
+            format: date-time
+          example: ["2026-02-04T16:51:02+00:00"]
+        end_utc:
+          type: array
+          items:
+            type: string
+            format: date-time
+          example: ["2026-02-04T16:51:02+00:00"]
+
+    Result:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 6
+        url_id:
+          type: integer
+          example: 2
+        analysis_id:
+          type: integer
+          example: 6
+        job_id:
+          type: integer
+          example: 16
+        job_type_code:
+          type: string
+          enum:
+            - VALIDATION_CHECK
+            - REACHABILITY_CHECK
+            - SECURITY_CHECK
+          example: "VALIDATION_CHECK"
+        analysis_output:
+          type: string
+          description: Raw output from the analysis tool
+          example: "{'scheme': 'https', 'domain': 'www.google.fr', 'path': '', 'is_http': True, 'is_ip_address': False, 'has_port': False, 'port': None, 'security_flags': []}"
+        validity_status:
+          type: string
+          description: URL validity status
+          example: "VALID_HTTP"
+        reachability_status:
+          type: string
+          description: Domain reachability status
+          example: "REACHABLE"
+        security_status:
+          type: string
+          description: Security check status
+          example: "UNKNOWN"

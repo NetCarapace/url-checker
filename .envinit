@@ -1,0 +1,6 @@
+# This configuration is meant to be used in DEV.
+# As well to setup build environment tools.
+APPNAME="URL Checker"
+PACKAGENAME="url_checker"
+PACKAGE_DEBIANNAME="url-checker"
+SETTINGSENVPREFIX="URLCHECKER_"

@@ -1,0 +1,5 @@
+# This configuration is meant to be used in DEV.
+# As well to setup build environment tools.
+
+URLCHECKER_GITLAB_CI_API_V4_URL=looks_like_https://your_server/api/v4
+URLCHECKER_GITLAB_PROJECT_ID=your_own_infra_integer_integer_project_id

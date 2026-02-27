@@ -1,0 +1,12 @@
+* Can be tested with Apache Bench (ab) from laptop
+  * https://ourcodeworld.com/articles/read/957/how-to-run-a-stress-test-to-your-apache-server-in-ubuntu-18-04
+  * first tries: ab -c 2 -n 10                             -> should be all good
+  * second tries: ab -c 10 -n 50                           -> should be all good with envisionned RL,
+                                                              half of the requests are already rejected by Nginx
+  * third tries: ab -c 200 -n 5000                         -> server survives thanks to rate limiting
+  * fourth tries, without rate limiting: ab -c 200 -n 5000 -> webserver is already in stress test conditions
+* On server side:
+  * htop
+  * btop
+  * with Nginx Ratelimiting
+  * without Nginx

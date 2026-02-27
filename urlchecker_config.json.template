@@ -1,0 +1,16 @@
+{
+    "job_types_config": {
+        "VALIDATION_CHECK": {
+            "tools_path": "/usr/bin",
+            "tools_command": "python3 -m url_checker.helpers.validators.url_validator"
+        },
+        "REACHABILITY_CHECK": {
+            "tools_path": "/usr/bin",
+            "tools_command": "ping -c 1"
+        },
+        "SECURITY_CHECK": {
+            "tools_path": "contrib/url-checker-tools",
+            "tools_command": "make run"
+        }
+    }
+}

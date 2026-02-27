@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    hostname: rabbitmq
+    restart: unless-stopped
+    #user: "${UID}:${GID}"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${URLCHECKER_RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${URLCHECKER_RABBITMQ_DEFAULT_PASS:-guest}
+    volumes:
+      - ../docker-tmp/rabbitmq/config/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ../docker-tmp/rabbitmq/logs:/var/log/rabbitmq
+      - ../docker-tmp/rabbitmq/data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      urlchecker_network:
+        ipv4_address: 172.20.0.10
+
+  mariadb:
+    image: mariadb:10
+    container_name: mariadb
+    hostname: mariadb
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${URLCHECKER_MYSQL_ROOT_PASSWORD:-myrootpassword}
+      MYSQL_DATABASE: ${URLCHECKER_MYSQL_DATABASE:-urlchecker}
+      MYSQL_USER: ${URLCHECKER_MYSQL_USER:-urlchecker}
+      MYSQL_PASSWORD: ${URLCHECKER_MYSQL_PASSWORD:-myurlcheckerpassword}
+    volumes:
+      - ../docker-tmp/mariadb/config/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+      - ../docker-tmp/mariadb/logs:/var/log/mysql
+      - ../docker-tmp/mariadb/data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      urlchecker_network:
+        ipv4_address: 172.20.0.20
+
+networks:
+  urlchecker_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
