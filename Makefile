@@ -192,7 +192,7 @@ configure_repo_dev: install-dev
 	uv run pre-commit run --all-files; \
 	echo "Virtual environment created, local repo configured with pre-commit hooks."; \
 
-	cd /tmp \
+	cd /tmp;# \
 	# git clone TODO ADD Github stuff
 
 # Development lifecycle #
