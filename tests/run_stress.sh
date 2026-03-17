@@ -28,16 +28,16 @@ tmux send-keys -t urlchecker-stress:0.3 "ssh -t urlchecker-test.restena.lu bmon"
 #tmux select-pane -t 0
 tmux send-keys -t urlchecker-stress:0.0 "date" C-m
 tmux send-keys -t urlchecker-stress:0.0 "sleep 10" C-m
-tmux send-keys -t urlchecker-stress:0.0 "ab -c 2 -n 10 https://urlchecker-test.restena.lu/main/all" C-m
+tmux send-keys -t urlchecker-stress:0.0 "ab -c 3 -n 24 https://urlchecker-test.restena.lu/main/all" C-m
 #tmux select-pane -t 2
 tmux send-keys -t urlchecker-stress:0.2 "date" C-m
 tmux send-keys -t urlchecker-stress:0.2 "sleep 20" C-m
 tmux send-keys -t urlchecker-stress:0.2 "ab -c 2 -n 1000 https://urlchecker-test.restena.lu/all" C-m
-tmux send-keys -t urlchecker-stress:0.2 "echo 'Waiting for 5 minutes ...'" C-m
-tmux send-keys -t urlchecker-stress:0.2 "sleep 300" C-m
+tmux send-keys -t urlchecker-stress:0.2 "echo 'Waiting for 2 minutes ...'" C-m
+tmux send-keys -t urlchecker-stress:0.2 "sleep 120" C-m
 tmux send-keys -t urlchecker-stress:0.2 "date" C-m
 tmux send-keys -t urlchecker-stress:0.2 "ab -c 2 -n 10000 https://urlchecker-test.restena.lu/retests" C-m
-tmux send-keys -t urlchecker-stress:0.2 "ab -c 10 -n 10000 https://urlchecker-test.restena.lu/sssfds/fdsf" C-m
+tmux send-keys -t urlchecker-stress:0.2 "ab -c 10 -n 10000 https://urlchecker-test.restena.lu/sdssfds/fdedsf" C-m
 tmux send-keys -t urlchecker-stress:0.2 "sleep 8" C-m
 tmux send-keys -t urlchecker-stress:0.2 "ab -c 1 -t 50 https://urlchecker-test.restena.lu/fdsf454sf/1/one" C-m
 
