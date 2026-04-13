@@ -800,6 +800,10 @@ components:
           type: string
           description: Path to tools directory
           example: "/usr/bin"
+        tools_env_file:
+          type: string
+          description: Path to tools environment config
+          example: "/etc/url-checker-tools/.env"
         timeout_seconds:
           type: integer
           description: Execution timeout in seconds
