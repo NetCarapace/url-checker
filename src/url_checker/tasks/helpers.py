@@ -1,8 +1,12 @@
 """Helper Functions for our simple Tasks manager"""
 
 import json
+import os
 import subprocess
+from pathlib import Path
 from urllib.parse import urlparse
+
+from dotenv import dotenv_values
 
 from url_checker.helpers.logging import log
 from url_checker.main.enums import (
@@ -30,6 +34,9 @@ def build_command(job_type_code: str, config, url_normalized: str):
     elif job_type_code == JobTypeCode.SECURITY_CHECK.value:
         # Job3: Security check on full URL
         target = url_normalized
+        if str(config.tools_command) == "make run_robot":
+            # Small hack for dev integrated environment: dirty, but it works
+            target = f'target_url="{target}"'
     else:
         raise ValueError(f"Unknown job_type_code: {job_type_code}")
 
@@ -37,7 +44,7 @@ def build_command(job_type_code: str, config, url_normalized: str):
     command_parts = command_str.split()
 
     if config.tools_path:
-        command_parts[0] = str(config.tools_path / command_parts[0])
+        # command_parts[0] = str(config.tools_path / command_parts[0])
 
         #    TODO Small hack for v0.2 in order to simulate a security_check before actually plugging in it
         if command_parts[0].endswith("sleep"):
@@ -50,7 +57,9 @@ def build_command(job_type_code: str, config, url_normalized: str):
     return command, target
 
 
-def execute_tool(job_id: int, command: list, cwd: str, timeout: int) -> dict:
+def execute_tool(
+    job_id: int, command: list, cwd: str, timeout: int, env_file: str
+) -> dict:
     """
     Execute external tool and capture output.
 
@@ -63,6 +72,35 @@ def execute_tool(job_id: int, command: list, cwd: str, timeout: int) -> dict:
             'error': str or None
         }
     """
+    # Maybe we have benefit to move this to pydantic at WebApp init
+    # Start with minimal env (PATH + basics only)
+    tool_env = {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "HOME": os.environ.get("HOME", "/root"),
+        "SHELL": os.environ.get("SHELL", "/bin/bash"),
+        "LANG": os.environ.get("LANG", "C.UTF-8"),
+    }
+    # Load .env only from trusted path
+    env_file = Path(env_file)
+    if env_file.exists() and env_file.is_file():
+        tool_env.update(dotenv_values(str(env_file)))
+    # Whitelist ONLY tool-specific keys (customize to your needs)
+    allowed_keys = {
+        "PATH",
+        "HOME",
+        "SHELL",
+        "LANG",
+        "URLCHECKERTOOLS_VIRUSTOTAL_API_KEY",
+        "URLCHECKERTOOLS_MISP_URL",
+        "URLCHECKERTOOLS_MISP_API_KEY",
+        "URLCHECKERTOOLS_LOOKYLOO_URL",
+        # Add other tool-specific keys here
+    }
+    # Filter out any unexpected keys
+    for key in list(tool_env):
+        if key not in allowed_keys:
+            del tool_env[key]
+
     try:
         result = subprocess.run(
             command,
@@ -71,6 +109,7 @@ def execute_tool(job_id: int, command: list, cwd: str, timeout: int) -> dict:
             cwd=str(cwd) if cwd else None,
             timeout=timeout,
             check=False,  # Don't raise on non-zero exit
+            env=tool_env,
         )
 
         log.info(f"Job {job_id}: Tool exit code: {result.returncode}")
@@ -149,6 +188,36 @@ def handle_reachability_success(job_id: int, result: dict, execution_result: dic
     return job_status, job_error_logs, result_record
 
 
+def _parse_tool_output(stdout: str) -> dict | None:
+    """
+    Extract the synthesis JSON block from url-checker-tools mixed stdout.
+    Specifically looks for the block containing the 'synthesis' key.
+    """
+    if not stdout or not stdout.strip():
+        return None
+
+    decoder = json.JSONDecoder()
+    lines = stdout.split("\n")
+
+    for i, line in enumerate(lines):
+        if line.strip().startswith("{"):
+            candidate = "\n".join(lines[i:])
+            try:
+                obj, _ = decoder.raw_decode(candidate.strip())
+                if "synthesis" in obj:  # ← target specifically synthesis block
+                    return obj
+            except json.JSONDecodeError:
+                continue
+
+    log.error(
+        {
+            "action": "_parse_tool_output",
+            "message": "_parse_tool_output: No synthesis JSON block found",
+        }
+    )
+    return None
+
+
 def handle_security_success(job_id: int, result: dict, execution_result: dict):
     """
     Handle Job3 (Security) success - parse JSON security output
@@ -160,29 +229,36 @@ def handle_security_success(job_id: int, result: dict, execution_result: dict):
     stderr = execution_result["stderr"]
 
     # Try to parse JSON output from security tool
-    try:
-        security_result_json = json.loads(stdout)
-        log.info(f"Job {job_id}: Parsed JSON security result successfully")
-    except json.JSONDecodeError as e:
-        log.error(f"Job {job_id}: Failed to parse JSON output: {e}")
+    # url-checker-tools outputs mixed plain text + JSON blocks,
+    # so we extract the last JSON block (synthesis result)
+    security_result_json = _parse_tool_output(stdout)
+    if security_result_json is None:
+        log.error(f"Job {job_id}: Failed to parse JSON output: no JSON block found")
         log.error(f"Job {job_id}: Raw output: {stdout[:500]}")
-
-        # If JSON parse fails, treat as unknown
         security_result_json = {
             "status": "unknown",
-            "error": f"Failed to parse tool output: {str(e)}",
+            "error": "Failed to parse tool output: no JSON block found",
             "raw_output": stdout[:1000],
             "stderr": stderr[:1000],
         }
+    else:
+        log.info(f"Job {job_id}: Parsed JSON security result successfully")
 
-    # Parse status
-    tool_status = security_result_json.get("status", "unknown").lower()
+    # Parse status (LEVEL 0 is FLAT structure: threat_level directly at root)
+    tool_status = security_result_json["synthesis"]["threat_level"]
 
     job_error_logs = ""
-    if tool_status == "safe":
+    if tool_status in ("safe", "low", "minimal"):
         security_status = SecurityStatus.SAFE.value
         job_status = JobStatus.SUCCESS.value
-    elif tool_status == "unsafe":
+    elif tool_status in (
+        "suspicious",
+        "unsafe",
+        "high",
+        "malicious",
+        "critical",
+        "medium",
+    ):
         security_status = SecurityStatus.UNSAFE.value
         job_status = JobStatus.SUCCESS.value  # Job succeeded, URL is unsafe
         threats = security_result_json.get("threats", [])
@@ -195,7 +271,7 @@ def handle_security_success(job_id: int, result: dict, execution_result: dict):
         security_status = SecurityStatus.UNKNOWN.value
         job_status = JobStatus.FAILED.value
         job_error_logs = security_result_json.get(
-            "error", "Security check inconclusive"
+            "error", f"Security check inconclusive (status: {tool_status})"
         )
 
     log.info(f"Job {job_id}: Security status={security_status}")

@@ -314,6 +314,10 @@ class JobTypeCode(ChoiceEnum):
         return self.get_config().tools_command
 
     @property
+    def tools_env_file(self) -> str:
+        return self.get_config().tools_env_file
+
+    @property
     def timeout_seconds(self) -> int:
         return self.get_config().timeout_seconds
 
@@ -365,4 +369,5 @@ if __name__ == "__main__":
 
     job_type = JobTypeCode.VALIDATION_CHECK
     print(job_type.tools_command)  # From config
+    print(job_type.tools_env_file)  # From config
     print(job_type.timeout_seconds)  # 10

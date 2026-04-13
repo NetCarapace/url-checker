@@ -2,15 +2,18 @@
     "job_types_config": {
         "VALIDATION_CHECK": {
             "tools_path": "/usr/bin",
-            "tools_command": "python3 -m url_checker.helpers.validators.url_validator"
+            "tools_command": "python3 -m url_checker.helpers.validators.url_validator",
+            "tools_env_file": ""
         },
         "REACHABILITY_CHECK": {
             "tools_path": "/usr/bin",
-            "tools_command": "ping -c 1"
+            "tools_command": "ping -c 1",
+            "tools_env_file": ""
         },
         "SECURITY_CHECK": {
             "tools_path": "contrib/url-checker-tools",
-            "tools_command": "make run"
+            "tools_command": "make malrun_robot",
+            "tools_env_file": "/etc/urlchecker-tools/.env"
         }
     }
 }

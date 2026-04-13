@@ -53,10 +53,10 @@ def create_analysis_chain(analysis_id):
     # Build chain: Job1 → Job2 → Job3
     workflow = chain(
         job_executor.si(
-            job2.id
+            job_id=job2.id
         ),  # si to make the signature call immutable and not add results
         job_executor.si(
-            job3.id
+            job_id=job3.id
         ),  # si to make the signature call immutable and not add results
     )
 
@@ -107,6 +107,7 @@ def job_executor(self, job_id: int = None):
         command=command,
         cwd=config.tools_path,
         timeout=config.timeout_seconds,
+        env_file=config.tools_env_file,
     )
 
     # Too premature
