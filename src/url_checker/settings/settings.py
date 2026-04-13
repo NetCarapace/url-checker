@@ -48,12 +48,12 @@ class Settings(BaseSettings):
     # Your application settings
     # ...
     ##
-    rabbitmq_server: str = "localhost"
+    rabbitmq_server: str = "172.20.0.10"
     rabbitmq_default_user: str = "guest"
     rabbitmq_default_pass: str = "guest"
     rabbitmq_vhost: str = ""
 
-    mysql_server: str = "localhost"
+    mysql_server: str = "172.20.0.20"
     # !!! Default to None because in Prod we do not want this to be set !!!
     # Database and User should already exist and created beforehand
     # Dev facility

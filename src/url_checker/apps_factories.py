@@ -18,7 +18,7 @@ def celery_init_app(app):
     class FlaskTask(Task):
         def __call__(self, *args, **kwargs) -> object:
             """Provide the ability to use Flask app_context from within a Celery Task"""
-            print(f"FlaskTask called with app: {app}")  # Debug line
+            # print(f"FlaskTask called with app: {app}")  # Debug line
             with app.app_context():
                 return self.run(*args, **kwargs)
 
