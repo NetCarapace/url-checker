@@ -27,7 +27,7 @@ services:
         ipv4_address: 172.20.0.10
 
   mariadb:
-    image: mariadb:10
+    image: mariadb:12
     container_name: mariadb
     hostname: mariadb
     restart: unless-stopped

@@ -530,7 +530,7 @@ test_while_running:
 	echo ""
 	echo "Should be rejected ..."
 	curl -X POST \
-	    -H "Authorisation: Bearer your-api-bad-token" \
+	    -H "Authorization: Bearer your-api-bad-token" \
 		-H "Content-Type: application/json" \
 		-d @tests/test_while_running.json \
 		http://127.0.0.1:5000/main/urls
