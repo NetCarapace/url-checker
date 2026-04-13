@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from celery.signals import task_success
+from celery.signals import task_failure, task_retry, task_success
 
 # Avoid circular import by not importing from app.py
 from url_checker.create_apps import flask_app
@@ -80,7 +80,7 @@ def job_executor_success_handler(sender=None, result=None, **kwargs):
         log.info(f"Job {job_id} success handler completed")
 
 
-@task_success.connect(sender=job_executor)
+@task_failure.connect(sender=job_executor)
 def job_executor_failure_handler(sender=None, task_id=None, exception=None, **kwargs):
     """Update job executor failures when task fails"""
 
@@ -121,7 +121,7 @@ def job_executor_failure_handler(sender=None, task_id=None, exception=None, **kw
         )
 
 
-@task_success.connect(sender=job_executor)
+@task_retry.connect(sender=job_executor)
 def job_executor_retry_handler(sender=None, reason=None, **kwargs):
     """Update job executor tasks retries"""
 
