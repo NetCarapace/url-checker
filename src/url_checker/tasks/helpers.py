@@ -150,9 +150,24 @@ def handle_reachability_success(job_id: int, result: dict, execution_result: dic
     Must be run from within the FlaskApp context
     """
 
-    is_reachable = execution_result["exit_code"] == 0 and not execution_result.get(
-        "error"
+    target = result["target"]
+
+    error = execution_result.get("error")
+    stderr = execution_result.get("stderr", "")
+    stdout = execution_result.get("stdout", "")
+    curl_exit_code = execution_result.get("exit_code")
+
+    # This works only by hypothesis we use curl rewording only http_code as output. Might get improvement here...
+    http_code = stdout.strip()
+
+    # Did test execute properly ?
+    # nonzero curl exit code means network / DNS / TLS / connection problem
+    # 000 means no HTTP response.
+    is_reachable = (
+        curl_exit_code == 0 and not error and http_code.isdigit() and http_code != "000"
     )
+    # 403 or 404 means reachable but problematic.
+    is_healthy = is_reachable and 200 <= int(http_code) < 400
 
     # Determine status
     job_error_logs = ""
@@ -164,26 +179,29 @@ def handle_reachability_success(job_id: int, result: dict, execution_result: dic
         job_status = (
             JobStatus.SUCCESS.value
         )  # Job succeeded (ping ran), URL is just unreachable
-        job_error_logs = execution_result.get("error") or execution_result.get("stderr")
+        job_error_logs = error or stderr
 
     log.info(f"Job {job_id}: Reachability={reachability_status}")
 
     # Build output
     output_data = {
         "is_reachable": is_reachable,
-        "target": result["target"],
-        "exit_code": execution_result["exit_code"],
-        "stdout": execution_result["stdout"][:1000],  # Limit size
-        "stderr": execution_result["stderr"][:500],
+        "is_healthy": is_healthy,
+        "target": target,
+        "exit_code": curl_exit_code,
+        "stdout": stdout[:1000],  # Limit size
+        "stderr": stderr[:500],
     }
 
     # Create Result recordexecution_result
     result_record = Result(
         job_id=job_id,
-        output=json.dumps(output_data, indent=2),
-        validity_status="",
+        synthesis=json.dumps(output_data, separators=(",", ":")),
+        raw_error=stderr,
+        raw_output=stdout,
+        validity_status=None,
         reachability_status=reachability_status,
-        security_status="",
+        security_status=None,
     )
     return job_status, job_error_logs, result_record
 
@@ -245,7 +263,8 @@ def handle_security_success(job_id: int, result: dict, execution_result: dict):
         log.info(f"Job {job_id}: Parsed JSON security result successfully")
 
     # Parse status (LEVEL 0 is FLAT structure: threat_level directly at root)
-    tool_status = security_result_json["synthesis"]["threat_level"]
+    synthesis = security_result_json.get("synthesis", {})
+    tool_status = str(synthesis.get("threat_level", "unknown")).lower()
 
     job_error_logs = ""
     if tool_status in ("safe", "low", "minimal"):
@@ -279,11 +298,13 @@ def handle_security_success(job_id: int, result: dict, execution_result: dict):
     # Create Result record
     result_record = Result(
         job_id=job_id,
-        output=json.dumps(security_result_json, indent=2)[
+        synthesis=json.dumps(security_result_json, separators=(",", ":"))[
             :5000
         ],  # Store JSON, limit size
-        validity_status="",
-        reachability_status="",
+        raw_output=stdout,
+        raw_error=stderr,
+        validity_status=None,
+        reachability_status=None,
         security_status=security_status,
     )
     return job_status, job_error_logs, result_record

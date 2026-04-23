@@ -492,17 +492,28 @@ class Job(Base):
 class Result(Base):
     __tablename__ = "results"
 
-    output: sql_orm.Mapped[str] = sql_orm.mapped_column(
+    synthesis: sql_orm.Mapped[str] = sql_orm.mapped_column(
         sql_alc.Text,
         default="",
+        nullable=False,
+    )
+    raw_error: sql_orm.Mapped[str] = sql_orm.mapped_column(
+        sql_alc.Text,
+        default="",
+        nullable=False,
+    )
+    raw_output: sql_orm.Mapped[str] = sql_orm.mapped_column(
+        sql_alc.Text,
+        default="",
+        nullable=False,
     )
     # it should become a many-to-one on the one side
     # We would have job1, job2, job3, output1, output2 and output3
     job_id: sql_orm.Mapped[int] = sql_orm.mapped_column(
         sql_alc.ForeignKey("jobs.id"),
+        nullable=False,
     )
-    job = sql_orm.relationship(
-        "Job",
+    job: sql_orm.Mapped["Job"] = sql_orm.relationship(
         back_populates="result",
     )
     # SAFE / UNSAFE
@@ -512,19 +523,16 @@ class Result(Base):
     # and along valid: true/false, reachability: true/false
     #
     # Job 1
-    validity_status: sql_orm.Mapped[str] = sql_orm.mapped_column(
-        sql_alc.String(16),
-        default="",  # Add explicit default
+    validity_status: sql_orm.Mapped[str | None] = sql_orm.mapped_column(
+        sql_alc.String(16), nullable=True
     )
     # Job 2
-    reachability_status: sql_orm.Mapped[str] = sql_orm.mapped_column(
-        sql_alc.String(16),
-        default="",  # Add explicit default
+    reachability_status: sql_orm.Mapped[str | None] = sql_orm.mapped_column(
+        sql_alc.String(16), nullable=True
     )
     # Job 3
-    security_status: sql_orm.Mapped[str] = sql_orm.mapped_column(
-        sql_alc.String(16),
-        default="",  # Add explicit default
+    security_status: sql_orm.Mapped[str | None] = sql_orm.mapped_column(
+        sql_alc.String(16), nullable=True
     )
 
     def to_dict(self):
@@ -534,7 +542,7 @@ class Result(Base):
             "analysis_id": self.job.analysis_id if self.job.analysis_id else None,
             "job_id": self.job_id,
             "job_type_code": self.job.type_code if self.job else None,
-            "analysis_output": self.output,
+            "analysis_synthesis": self.synthesis,
             "validity_status": self.validity_status,
             "reachability_status": self.reachability_status,
             "security_status": self.security_status,

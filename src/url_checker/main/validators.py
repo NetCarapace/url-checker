@@ -18,7 +18,7 @@ class URLValidationResult:
     """Result of URL validation"""
 
     is_valid: bool
-    validity_status: str
+    validity_status: str | None = None
     validation_result: str
     details: Dict[str, any]
     error_message: Optional[str] = None

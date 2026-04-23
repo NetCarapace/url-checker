@@ -7,7 +7,7 @@
         },
         "REACHABILITY_CHECK": {
             "tools_path": "/usr/bin",
-            "tools_command": "ping -c 1",
+            "tools_command": "curl -I -s -o /dev/null -w %{http_code}",
             "tools_env_file": ""
         },
         "SECURITY_CHECK": {

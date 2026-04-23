@@ -169,10 +169,10 @@ def new_url():
         # Create result
         result = Result(
             job_id=job1.id,
-            output=str(validation_result.details),
+            synthesis=str(validation_result.details),
             validity_status=validation_result.validity_status,
-            reachability_status="",
-            security_status="",
+            reachability_status=None,
+            security_status=None,
         )
         result.add_to_db(False)
 
@@ -357,7 +357,7 @@ def one_job(job_id):
             "job_id": job.id,
             "url_id": analysis.url_id if analysis else None,
             "status": job.status,
-            "result": result.output if result else None,
+            "result": result.synthesis if result else None,
             "error": job.error_logs,
             "start_utc": (job.start_utc.isoformat() if job.start_utc else None,),
             "end_utc": (job.end_utc.isoformat() if job.end_utc else None,),
