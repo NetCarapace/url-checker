@@ -98,7 +98,7 @@ class ReachabilityStatus(ChoiceEnum):
     Indicates whether URL domain is reachable
     """
 
-    REACHABLE = ("REACHABLE", "Reachable", "Domain responds to ping requests")
+    REACHABLE = ("REACHABLE", "Reachable", "Domain responds from URL Checker host")
 
     UNREACHABLE = (
         "UNREACHABLE",

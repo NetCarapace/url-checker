@@ -28,7 +28,7 @@ def build_command(job_type_code: str, config, url_normalized: str):
     parsed = urlparse(url_normalized)
 
     if job_type_code == JobTypeCode.REACHABILITY_CHECK.value:
-        # Job2: Ping domain needs specific treatment of url
+        # Job2: Checking reachability of domain needs specific treatment of url
         domain = parsed.netloc.split(":")[0]  # Remove port if present
         target = domain
     elif job_type_code == JobTypeCode.SECURITY_CHECK.value:
@@ -145,7 +145,7 @@ def execute_tool(
 
 def handle_reachability_success(job_id: int, result: dict, execution_result: dict):
     """
-    Handle Job2 (Reachability) success - parse ping output
+    Handle Job2 (Reachability) success - parse rechability check output
 
     Must be run from within the FlaskApp context
     """
@@ -176,9 +176,7 @@ def handle_reachability_success(job_id: int, result: dict, execution_result: dic
         job_status = JobStatus.SUCCESS.value
     else:
         reachability_status = ReachabilityStatus.UNREACHABLE.value
-        job_status = (
-            JobStatus.SUCCESS.value
-        )  # Job succeeded (ping ran), URL is just unreachable
+        job_status = JobStatus.SUCCESS.value  # Job succeeded, URL is just unreachable
         job_error_logs = error or stderr
 
     log.info(f"Job {job_id}: Reachability={reachability_status}")
@@ -298,9 +296,8 @@ def handle_security_success(job_id: int, result: dict, execution_result: dict):
     # Create Result record
     result_record = Result(
         job_id=job_id,
-        synthesis=json.dumps(security_result_json, separators=(",", ":"))[
-            :5000
-        ],  # Store JSON, limit size
+        # Store JSON, limit size
+        synthesis=json.dumps(security_result_json, separators=(",", ":"))[:5000],
         raw_output=stdout,
         raw_error=stderr,
         validity_status=None,

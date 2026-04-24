@@ -23,6 +23,14 @@ fileConfig(config.config_file_name)
 logger = logging.getLogger("alembic.env")
 
 
+# Fix the Celery + Flask-Migrate + Alembic -> ignore the celery_* tables in our migrations
+def include_object(object, name, type_, reflected, compare_to):
+    """Filtre les objets Alembic."""
+    if type_ == "table" and name and name.startswith("celery_"):
+        return False
+    return True
+
+
 # ✅ Add custom type renderer
 def render_item(type_, obj, autogen_context):
     """
@@ -130,6 +138,7 @@ def run_migrations_offline():
                 output_buffer=buffer,
                 target_metadata=get_metadata(name),
                 literal_binds=True,
+                include_object=include_object,
                 # ✅ Use custom renderer
                 render_item=render_item,
             )
@@ -188,6 +197,7 @@ def run_migrations_online():
                 upgrade_token="%s_upgrades" % name,
                 downgrade_token="%s_downgrades" % name,
                 target_metadata=get_metadata(name),
+                include_object=include_object,
                 # ✅ Use custom renderer
                 render_item=render_item,
                 **conf_args,
