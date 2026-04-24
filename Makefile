@@ -84,11 +84,11 @@ SHELL := /bin/bash
 # We also include it into the .tar.gz bundle.
 $(shell \
   if [ ! -f .python-version ]; then \
-    python3 -c "import tomllib; \
-      data = tomllib.load(open('pyproject.toml', 'rb')); \
-      req = data['project']['requires-python']; \
-      version = req.replace('>=', '').split('.')[0:2]; \
-      print('.'.join(version))" > .python-version 2>/dev/null; \ # || echo "3.13" > .python-version; \
+python3 -c "import tomllib; \
+data = tomllib.load(open('pyproject.toml', 'rb')); \
+req = data['project']['requires-python']; \
+version = req.replace('>=', '').split('.')[0:2]; \
+print('.'.join(version))" > .python-version 2>/dev/null || echo "3.13" > .python-version; \
   fi \
 )
 
@@ -114,7 +114,7 @@ endef
 $(foreach envfile,$(envfiles),$(eval $(call check_envfile,$(envfile))))
 
 ifeq ($(env_file_non_present),1)
-$(shell echo -e "$(RED)$(BOLD)At least one envfile was recreated from template, please modify varenvs: run configure_repo_dev or manually.$(RESET)" >&2)
+$(shell echo -e "$(RED)$(BOLD)At least one envfile was recreated from template, please modify varenvs: run configure_repo_dev recipe or manually.$(RESET)" >&2)
 $(error ❌ Please correct and run again. ❌)
 endif
 env_file_non_present :=
@@ -136,7 +136,7 @@ endif
 PACKAGE_VERSION = $(shell cat VERSION)
 PACKAGE_PYTHON = $(shell cat .python-version)
 PACKAGE_SUFFIX = deployment-bundle.tar.gz
-PACKAGE_FULLNAME = ${URLCHECKER_PACKAGE_NAME}_v${PACKAGE_VERSION}_Python${PACKAGE_PYTHON}-${PACKAGE_SUFFIX}
+PACKAGE_FULLNAME = ${PACKAGENAME}_v${PACKAGE_VERSION}_Python${PACKAGE_PYTHON}-${PACKAGE_SUFFIX}
 
 
 # Houskeeping forcing variables
@@ -179,20 +179,18 @@ configure_repo_dev: install-dev
 		echo "Reply Y if and only if the pip3 list output above is consistent and does not display system packages !"; \
 		echo "Ctrl+C to escape ..."; \
 		read -p "Do you want to install other specific dependencies from specific requirement files with pip ? (Y/N) " go_to_install; \
-	if [ $$go_to_install = "Y" ] || [ $$go_to_install = "y" ]; then \
-		uv run pip3 install -r requirements-dev.txt -e .; \
-	else
-		echo "Tweak requirements-dev.txt skipped"; \
-	fi \
-	fi
-
+		if [ $$go_to_install = "Y" ] || [ $$go_to_install = "y" ]; then \
+			uv run pip3 install -r requirements-dev.txt -e .; \
+		else \
+			echo "Tweak requirements-dev.txt skipped"; \
+		fi; \
+	fi;
 	uv run pre-commit install; \
 	uv run pre-commit autoupdate; \
 	echo "Initial pre-commit run"; \
 	uv run pre-commit run --all-files; \
 	echo "Virtual environment created, local repo configured with pre-commit hooks."; \
-
-	cd /tmp;# \
+	cd /tmp; \
 	# git clone TODO ADD Github stuff
 
 # Development lifecycle #
@@ -200,14 +198,14 @@ configure_repo_dev: install-dev
 # Dependencies
 # -dev suffixes means we specifically manage dependencies present only in Dev Environment
 install_deps:
+	uv pip install pip
 	uv venv --seed
 	uv sync --locked
 
-
 install-dev:
+	uv pip install pip
 	uv venv --seed
 	uv sync --dev --locked
-	uv pip install pip
 
 add_newdep:
 	uv add $(new_package)
@@ -218,6 +216,11 @@ add_newdep-dev:
 update_deps:
 	uv lock --upgrade
 	uv sync --locked
+
+update_deps-dev:
+	uv lock --upgrade
+	uv sync --dev --locked
+
 ########################################################################################
 
 # Database Management
@@ -292,59 +295,61 @@ run: run_dev_infra
 
 # Build 🌍 , Publish  🌬️ and Release 🔥
 build: update_deps clean
-	# Export uv.lock to requirements-build.txt for downloading
-	echo "Create requirements-build.txt";
+	set -e; \
+	trap '$(MAKE) configure_repo_dev' EXIT \
+	# Export uv.lock to requirements-build.txt for downloading \
+	echo "Create requirements-build.txt"; \
 	uv export \
-	  --format requirements.txt \
-	  --no-hashes \
-	  --frozen \
-	  --no-editable \
-	  --no-emit-project > requirements-build.txt;
-	# Export all wheel
-	echo "Download wheel";
-	mkdir -p offline-wheels;
-	# Download ONLY the locked dependencies for this project
+		--format requirements.txt \
+		--no-hashes \
+		--frozen \
+		--no-editable \
+		--no-emit-project > requirements-build.txt; \
+	# Export all wheel \
+	echo "Download wheel"; \
+	mkdir -p offline-wheels; \
+	# Download ONLY the locked dependencies for this project \
 	uv run pip download \
-	  -r requirements-build.txt \
-	  --dest offline-wheels/ \
-      --prefer-binary
-	# Add build package tools
-	# python3 -m pip download setuptools wheel pip --dest offline-wheels/
+		-r requirements-build.txt \
+		--dest offline-wheels/ \
+		--prefer-binary \
+	# Add build package tools \
+	# python3 -m pip download setuptools wheel pip --dest offline-wheels/ \
 	python3 -m pip download \
-	  setuptools \
-	  --dest offline-wheels \
-	  --prefer-binary
-	# Bundle everything
-	echo "Bundle it";
+		setuptools \
+		--dest offline-wheels \
+		--prefer-binary \
+	# Bundle everything \
+	echo "Bundle it in ${PACKAGE_FULLNAME}"; \
 	tar czf ${PACKAGE_FULLNAME} \
-	  --transform='s|^src/$(PACKAGENAME)|$(PACKAGENAME)|' \
-      src/$(PACKAGENAME) \
-	  doc \
-	  docker \
-	  Makefile \
-	  .env.template \
-	  urlchecker_config.json.template \
-	  .python-version \
-      pyproject.toml \
-	  requirements-build.txt \
-      uv.lock \
-	  CHANGELOG.md \
-	  CONTRIBUTORS.md \
-	  UPGRADING_NOTES.md \
-	  README.md \
-	  RELEASE_NOTES.md \
-	  VERSION \
-	  offline-wheels;
+		--transform='s|^src/$(PACKAGENAME)|$(PACKAGENAME)|' \
+		src/$(PACKAGENAME) \
+		doc \
+		docker \
+		Makefile \
+		.env.template \
+		urlchecker_config.json.template \
+		.python-version \
+		pyproject.toml \
+		requirements-build.txt \
+		uv.lock \
+		CHANGELOG.md \
+		CONTRIBUTORS.md \
+		UPGRADING_NOTES.md \
+		README.md \
+		RELEASE_NOTES.md \
+		VERSION \
+		offline-wheels;
 
 publish:
-    # Configuration
+	# Configuration
 	read -s -p "GitLab Token: " GITLAB_TOKEN; \
 	echo "Publishing to GitLab Package Registry..."; \
 	echo "--upload-file ${PACKAGE_FULLNAME}"; \
 	echo "${URLCHECKER_GITLAB_CI_API_V4_URL}/projects/${URLCHECKER_GITLAB_PROJECT_ID}/packages/generic/${PACKAGE_DEBIANNAME}/${PACKAGE_VERSION}/${PACKAGE_FULLNAME}"; \
 	curl --header "PRIVATE-TOKEN: $$GITLAB_TOKEN" \
-	  --upload-file ${PACKAGE_FULLNAME} \
-	  "${URLCHECKER_GITLAB_CI_API_V4_URL}/projects/${URLCHECKER_GITLAB_PROJECT_ID}/packages/generic/${PACKAGE_DEBIANNAME}/${PACKAGE_VERSION}/${PACKAGE_FULLNAME}"; \
+		--upload-file ${PACKAGE_FULLNAME} \
+		"${URLCHECKER_GITLAB_CI_API_V4_URL}/projects/${URLCHECKER_GITLAB_PROJECT_ID}/packages/generic/${PACKAGE_DEBIANNAME}/${PACKAGE_VERSION}/${PACKAGE_FULLNAME}"; \
 	echo "✅ Published: ${PACKAGE_DEBIANNAME} version is ${PACKAGE_VERSION}"
 
 release: build publish
@@ -497,8 +502,6 @@ test_all_fail_post_while_running_full:
 		-d @tests/$$fname.json \
 		http://127.0.0.1:5000/main/urls
 
-
-
 test_while_running:
 # Add a dep on "run" and possibly check in run recipe that the webapp is not already up
 	# With token
@@ -530,7 +533,7 @@ test_while_running:
 	echo ""
 	echo "Should be rejected ..."
 	curl -X POST \
-	    -H "Authorization: Bearer your-api-bad-token" \
+		-H "Authorization: Bearer your-api-bad-token" \
 		-H "Content-Type: application/json" \
 		-d @tests/test_while_running.json \
 		http://127.0.0.1:5000/main/urls
