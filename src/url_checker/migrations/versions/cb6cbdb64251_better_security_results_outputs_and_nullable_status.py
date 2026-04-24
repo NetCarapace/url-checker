@@ -1,7 +1,7 @@
-"""empty message
+"""better_security_results_outputs_and_nullable_status
 
 Revision ID: cb6cbdb64251
-Revises: c95bf06f0fac
+Revises: 5726bb4cdcd3
 Create Date: 2026-04-23 11:33:09.851027
 
 """
@@ -12,7 +12,7 @@ from sqlalchemy.dialects import mysql
 
 # revision identifiers, used by Alembic.
 revision = "cb6cbdb64251"
-down_revision = "c95bf06f0fac"
+down_revision = "5726bb4cdcd3"
 branch_labels = None
 depends_on = None
 

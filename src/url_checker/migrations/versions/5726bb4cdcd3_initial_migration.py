@@ -1,6 +1,6 @@
 """Initial migration
 
-Revision ID: c95bf06f0fac
+Revision ID: 5726bb4cdcd3
 Revises:
 Create Date: 2026-02-16 21:38:58.422231
 
@@ -12,7 +12,7 @@ from alembic import op
 from url_checker.helpers.custom_types import UTCDateTime
 
 # revision identifiers, used by Alembic.
-revision = "c95bf06f0fac"
+revision = "5726bb4cdcd3"
 down_revision = None
 branch_labels = None
 depends_on = None
