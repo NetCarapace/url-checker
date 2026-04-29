@@ -390,7 +390,12 @@ test_one_post_testinstance:
 		-H "Authorization: Bearer $$API_TOKEN" \
 		-H "Content-Type: application/json" \
 		-d @tests/test_while_running.json \
-		${URLCHECKER_TESTURL}/main/urls
+		${URLCHECKER_TESTURL}/main/urls; \
+	curl -X POST \
+		-H "Authorization: Bearer $$API_TOKEN" \
+		-H "Content-Type: application/json" \
+		-d @tests/test_while_running_valid_reachable_malicious_1.json \
+		${URLCHECKER_TESTURL}/main/urls; \
 
 test_one_post_while_running:
 # Add a dep on "run" and possibly check in run recipe that the webapp is not already up
