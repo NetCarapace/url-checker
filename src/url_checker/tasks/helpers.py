@@ -30,7 +30,11 @@ def build_command(job_type_code: str, config, url_normalized: str):
     if job_type_code == JobTypeCode.REACHABILITY_CHECK.value:
         # Job2: Checking reachability of domain needs specific treatment of url
         domain = parsed.netloc.split(":")[0]  # Remove port if present
+        scheme = parsed.scheme
         target = domain
+        if "curl" in str(config.tools_command):
+            if scheme:
+                target = f"{scheme}://{domain}"
     elif job_type_code == JobTypeCode.SECURITY_CHECK.value:
         # Job3: Security check on full URL
         target = url_normalized
@@ -90,6 +94,12 @@ def execute_tool(
         "HOME",
         "SHELL",
         "LANG",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
         "URLCHECKERTOOLS_VIRUSTOTAL_API_KEY",
         "URLCHECKERTOOLS_MISP_URL",
         "URLCHECKERTOOLS_MISP_API_KEY",
