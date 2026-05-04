@@ -80,7 +80,7 @@ def execute_tool(
     # Start with minimal env (PATH + basics only)
     tool_env = {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "HOME": os.environ.get("HOME", "/root"),
+        "HOME": os.environ.get("HOME", "/home/urlchecker"),
         "SHELL": os.environ.get("SHELL", "/bin/bash"),
         "LANG": os.environ.get("LANG", "C.UTF-8"),
     }
@@ -100,10 +100,15 @@ def execute_tool(
         "http_proxy",
         "https_proxy",
         "no_proxy",
-        "URLCHECKERTOOLS_VIRUSTOTAL_API_KEY",
+        "URLCHECKERTOOLS_VIRUSTOTAL_APIKEY",
+        "URLCHECKERTOOLS_URLSCAN_APIKEY",
+        "URLCHECKERTOOLS_GOOGLESAFEBROWSING_APIKEY",
+        "URLCHECKERTOOLS_ABUSEIPDB_APIKEY",
         "URLCHECKERTOOLS_MISP_URL",
-        "URLCHECKERTOOLS_MISP_API_KEY",
+        "URLCHECKERTOOLS_MISP_APIKEY",
         "URLCHECKERTOOLS_LOOKYLOO_URL",
+        "URLCHECKERTOOLS_WHALEBONE_APISECRETKEY",
+        "URLCHECKERTOOLS_WHALEBONE_APIACCESSKEY",
         # Add other tool-specific keys here
     }
     # Filter out any unexpected keys
@@ -204,7 +209,7 @@ def handle_reachability_success(job_id: int, result: dict, execution_result: dic
     # Create Result recordexecution_result
     result_record = Result(
         job_id=job_id,
-        synthesis=json.dumps(output_data, separators=(",", ":")),
+        synthesis=output_data,
         raw_error=stderr,
         raw_output=stdout,
         validity_status=None,
@@ -307,7 +312,7 @@ def handle_security_success(job_id: int, result: dict, execution_result: dict):
     result_record = Result(
         job_id=job_id,
         # Store JSON, limit size
-        synthesis=json.dumps(security_result_json, separators=(",", ":"))[:5000],
+        synthesis=security_result_json,
         raw_output=stdout,
         raw_error=stderr,
         validity_status=None,

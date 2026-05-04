@@ -70,7 +70,7 @@ class StructuredLogger:
         if extra:
             log_entry.update(extra)
 
-        log_json = commentjson.dumps(log_entry)
+        log_json = commentjson.dumps(log_entry, separators=(",", ":"))
 
         # Safely get logger - use Python's built-in logging if Flask app not available
         try:

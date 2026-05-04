@@ -9,6 +9,7 @@ from marshmallow import ValidationError
 from url_checker.database import sql_db_conn as db
 from url_checker.helpers.authentication import require_api_token
 from url_checker.helpers.logging import log
+from url_checker.helpers.utils import str_to_bool
 from url_checker.main import main
 from url_checker.main.enums import (
     JobStatus,
@@ -167,9 +168,12 @@ def new_url():
         validation_result = validate_url(url)
 
         # Create result
+        print("--------------------------HERE0--------------")
+        print(validation_result.details)
+        print(str(validation_result.details))
         result = Result(
             job_id=job1.id,
-            synthesis=str(validation_result.details),
+            synthesis=validation_result.details,
             validity_status=validation_result.validity_status,
             reachability_status=None,
             security_status=None,
@@ -346,22 +350,15 @@ def all_jobs():
 @main.route("/jobs/<job_id>", methods=["GET", "DELETE"])
 @require_api_token
 def one_job(job_id):
+    verbose = str_to_bool(request.args.get("verbose"), default=False)
+    include_result = str_to_bool(request.args.get("include_result"), default=False)
+
     job = Job._get(id=job_id)
     if not job:
         return jsonify({"error": "Job not found"}), 404
 
     if request.method == "GET":
-        analysis = job.analysis
-        result = job.result
-        response = {
-            "job_id": job.id,
-            "url_id": analysis.url_id if analysis else None,
-            "status": job.status,
-            "result": result.synthesis if result else None,
-            "error": job.error_logs,
-            "start_utc": (job.start_utc.isoformat() if job.start_utc else None,),
-            "end_utc": (job.end_utc.isoformat() if job.end_utc else None,),
-        }
+        response = job.to_dict(verbose=verbose, include_resul=include_result)
     else:
         Job.delete_from_db()
         response = {"message": "Job deleted"}
@@ -394,12 +391,14 @@ def all_results():
 @main.route("/results/<result_id>", methods=["GET", "DELETE"])
 @require_api_token
 def one_result(result_id):
+    verbose = str_to_bool(request.args.get("verbose"), default=False)
+
     result = Result._get(id=result_id)
     if not result:
         return jsonify({"error": "Result not found"}), 404
 
     if request.method == "GET":
-        response = result.to_dict()
+        response = result.to_dict(verbose)
     else:
         Result.delete_from_db()
         response = {"message": "Job deleted"}

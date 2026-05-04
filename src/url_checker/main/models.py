@@ -5,10 +5,11 @@ This modules provide the Flask-SQLAlchemy database Models for Main.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import sqlalchemy as sql_alc
 import sqlalchemy.orm as sql_orm
+from sqlalchemy.dialects.postgresql import JSONB
 
 from url_checker.database import sql_db_conn as db
 from url_checker.helpers.custom_types import UTCDateTime
@@ -20,6 +21,8 @@ from url_checker.main.enums import (
     ValidityStatus,
 )
 from url_checker.models import Base
+
+json_type = sql_alc.JSON().with_variant(JSONB, "postgresql")
 
 
 class URL(Base):
@@ -461,18 +464,23 @@ class Job(Base):
         """Serialize job to dictionary"""
         data = {
             "id": self.id,
-            "url_id": self.analysis.url_id,
-            "analysis_id": self.analysis_id,
+            "url_id": (
+                self.analysis.url_id if self.analysis and self.analysis.url_id else None
+            ),
+            "analysis_id": self.analysis_id if self.analysis_id else None,
+            "status": self.status,
             "job_type_config": JobTypeCode.get_config(self.type_code).to_dict(),
-            "is_completed": self.is_completed,
-            "is_active": self.is_active,
+            "result": (
+                self.result.synthesis if self.result and self.result.synthesis else None
+            ),
         }
         if verbose:
             data["verbose_status"] = (
                 {
-                    "value": self.status,
-                    "label": JobStatus.get_label(self.status),
-                    "description": JobStatus.get_description(self.status),
+                    "is_completed": self.is_completed,
+                    "is_active": self.is_active,
+                    "status_label": JobStatus.get_label(self.status),
+                    "status_description": JobStatus.get_description(self.status),
                     "start_utc": (
                         self.start_utc.isoformat() if self.start_utc else None,
                     ),
@@ -492,9 +500,9 @@ class Job(Base):
 class Result(Base):
     __tablename__ = "results"
 
-    synthesis: sql_orm.Mapped[str] = sql_orm.mapped_column(
-        sql_alc.Text,
-        default="",
+    synthesis: sql_orm.Mapped[dict[str, Any]] = sql_orm.mapped_column(
+        json_type,
+        default=dict,
         nullable=False,
     )
     raw_error: sql_orm.Mapped[str] = sql_orm.mapped_column(
@@ -535,15 +543,33 @@ class Result(Base):
         sql_alc.String(16), nullable=True
     )
 
-    def to_dict(self):
-        return {
+    def to_dict(
+        self,
+        verbose: bool = False,
+    ):
+        """Serialize result to dictionary"""
+        data = {
             "id": self.id,
-            "url_id": self.job.analysis.url_id if self.job.analysis.url_id else None,
-            "analysis_id": self.job.analysis_id if self.job.analysis_id else None,
+            "url_id": (
+                self.job.analysis.url_id
+                if self.job and self.job.analysis.url_id
+                else None
+            ),
+            "analysis_id": (
+                self.job.analysis_id if self.job and self.job.analysis_id else None
+            ),
             "job_id": self.job_id,
             "job_type_code": self.job.type_code if self.job else None,
-            "analysis_synthesis": self.synthesis,
+            "synthesis": self.synthesis,
             "validity_status": self.validity_status,
             "reachability_status": self.reachability_status,
             "security_status": self.security_status,
         }
+        if verbose:
+            data["verbose_status"] = (
+                {
+                    "raw_error": self.raw_error,
+                    "raw_output": self.raw_output,
+                },
+            )
+        return data
