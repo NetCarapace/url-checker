@@ -349,6 +349,8 @@ paths:
         - Jobs
       parameters:
         - $ref: '#/components/parameters/JobIDParam'
+        - $ref: '#/components/parameters/Verbosity'
+        - $ref: '#/components/parameters/JobIncludeResult'
       responses:
         '200':
           description: Job details
@@ -438,6 +440,7 @@ paths:
         - Results
       parameters:
         - $ref: '#/components/parameters/ResultIDParam'
+        - $ref: '#/components/parameters/Verbosity'
       responses:
         '200':
           description: Result details
@@ -515,6 +518,26 @@ components:
       schema:
         type: integer
         example: 16
+
+    JobIncludeResult:
+      name: include_result
+      in: query
+      required: false
+      description: Include the associated result object in the response of the requested Job.
+      schema:
+        type: boolean
+        default: false
+      example: true
+
+    Verbosity:
+      name: verbose
+      in: query
+      required: false
+      description: Include extended job details in the response.
+      schema:
+        type: boolean
+        default: false
+        example: false
 
     ResultIDParam:
       name: result_id

@@ -168,9 +168,6 @@ def new_url():
         validation_result = validate_url(url)
 
         # Create result
-        print("--------------------------HERE0--------------")
-        print(validation_result.details)
-        print(str(validation_result.details))
         result = Result(
             job_id=job1.id,
             synthesis=validation_result.details,
@@ -358,7 +355,7 @@ def one_job(job_id):
         return jsonify({"error": "Job not found"}), 404
 
     if request.method == "GET":
-        response = job.to_dict(verbose=verbose, include_resul=include_result)
+        response = job.to_dict(verbose=verbose, include_result=include_result)
     else:
         Job.delete_from_db()
         response = {"message": "Job deleted"}
