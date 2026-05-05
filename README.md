@@ -1,4 +1,5 @@
-# URLChecker
+# URLChecker <img src="contrib/logo.png" width="100" alt="URLChecker logo" />
+
 URLChecker is a tool that allows to:
 - check the validity of a provided URL,
 - check if the content behind the URL is safe (reputation, etc.).
@@ -61,8 +62,8 @@ the point: a Merge Request is then opened based on the Issue. It might be necess
 A development helper is provided in the form of a Makefile.
 Inspiration is taken from (MIT License, see contrib subfolders, license files kept for legacy), improvements from it
 will be backported:
-- [my-devops-playground/makedeb-a-la-spoti](https://gitlab.com/tCR-lux/my-devops-playground/-/tree/master/Python/makedeb-a-la-spoti) Copyright © Cédric Renzi
-- [my-devops-playground/packpy-src](https://gitlab.com/tCR-lux/my-devops-playground/-/tree/master/Python/packpy-src) Copyright © Cédric Renzi
+- [my-devops-playground/makedeb-a-la-spoti](https://gitlab.com/tCR-lux/my-devops-playground/-/tree/master/Python/makedeb-a-la-spoti)
+- [my-devops-playground/packpy-src](https://gitlab.com/tCR-lux/my-devops-playground/-/tree/master/Python/packpy-src)
 
 Type ```make help``` from the king directory of this repository in order to get more insights.
 
@@ -123,6 +124,11 @@ the file ```CONTRIBUTORS.md```.
 
 URLChecker is co-funded by [Restena](https://www.restena.lu/) and by the European Union under [NGSOTI](https://restena.lu/fr/project/ngsoti) (Next Generation Security Operator Training Infrastructure) project.
 
-![EU logo](https://www.vulnerability-lookup.org/images/eu-funded.jpg)
-![NGSOTI logo](https://restena.lu/files/styles/large/public/inline-images/ngsoti-logo-verti-col.png)
-![Restena logo](https://restena.lu/sites/restena.lu/themes/site_theme/images/logo.svg)
+<p align="center">
+<img src="https://www.vulnerability-lookup.org/images/eu-funded.jpg" alt="EU logo" width="150" />
+<br />
+<img src="https://restena.lu/files/styles/large/public/inline-images/ngsoti-logo-verti-col.png" alt="NGSOTI logo" width="150" />
+<br />
+<img src="https://restena.lu/sites/restena.lu/themes/site_theme/images/logo.svg" alt="Restena logo" width="150" />
+<br />
+</p>

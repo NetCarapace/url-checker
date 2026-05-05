@@ -42,7 +42,7 @@ mailing lists before we have had a chance to assess the report.
 
 ## Our approach
 
-URLChecker-tools is developed and maintained on a best-effort basis:
+URLChecker is developed and maintained on a best-effort basis:
 
 - We will review reasonable security reports as soon as we can.
 - Where an issue is confirmed, we will work towards an appropriate fix or mitigation.
