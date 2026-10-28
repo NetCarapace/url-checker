@@ -19,6 +19,7 @@
 
 BOLD := \033[1m
 RESET := \033[0m
+BLUE := \033[1;34m
 GREEN := \033[1;32m
 RED := \033[31m
 BOLD_GREEN := \033[1;32m
@@ -674,7 +675,7 @@ help :
 	echo ""
 	echo -e "${BLUE}${BOLD}### I am your quick and dirty Help file :) ###${RESET}"
 	echo ""
-	echo -e "${BOLD}# Run make with targets like:${RESET}"
+	echo -e "${GREEN}${BOLD}# Run make with targets like:${RESET}"
 	echo "make target someparameter=\"somevalue\""
 	echo ""
 	echo -e "${GREEN}# Available combinations arguments/targets/description:${RESET}"
@@ -711,12 +712,12 @@ help :
 	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "nuke" "/" "Chain the cleaning steps above"
 	@printf "  %-20s %s %-20s %s %s\n" "[none]" "/" "nuke_db" "/" "Trash the local instance, including database"
 	echo ""
-	echo -e "${BOLD}💡 Examples:${RESET}"
+	echo -e "${GREEN}${BOLD}💡 Examples:${RESET}"
 	echo "  make configure_repo_dev"
 	echo "  make run"
 	echo "  make bump_version version_repo=1.2.3 tag_message=\"Release v1.2.3\""
 	echo ""
-	echo -e "${BOLD}📝 Default arguments that can be superseded on CLI:${RESET}"
+	echo -e "${GREEN}${BOLD}📝 Default arguments that can be superseded on CLI:${RESET}"
 	echo "- automatic=\"N\""
 	echo "- version_repo=\"0.0.0\""
 	echo "-	tag_message=\"\""
